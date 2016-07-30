@@ -28,11 +28,60 @@ sub engrave_line
     ." $fin_x,$fin_y\" />\n";
 }
 
+sub engrave_circle
+{
+  my ($centre_x, $centre_y, $radius)=@_;
+  print "<circle class=\"engrave\" cx=\"$centre_x\" cy=\"$centre_y\" r=\"$radius\" />\n";
+}
+
+sub draw_diamond
+{
+  my ($x_centre, $y_centre, $vect_x, $vect_y, $scaling) = @_;
+  engrave_line($x_centre-$vect_x*$scaling, $y_centre-$vect_y*$scaling,
+               $x_centre-$vect_y*$scaling, $y_centre+$vect_x*$scaling);
+  engrave_line($x_centre-$vect_y*$scaling, $y_centre+$vect_x*$scaling,
+               $x_centre+$vect_x*$scaling, $y_centre+$vect_y*$scaling);
+  engrave_line($x_centre+$vect_x*$scaling, $y_centre+$vect_y*$scaling,
+               $x_centre+$vect_y*$scaling, $y_centre-$vect_x*$scaling);
+  engrave_line($x_centre+$vect_y*$scaling, $y_centre-$vect_x*$scaling,
+               $x_centre-$vect_x*$scaling, $y_centre-$vect_y*$scaling);
+}
+
 sub add_snake
 {
   my ($head, $tail) = @_;
-  engrave_line(find_x_coord($head), find_y_coord($head)
-               , find_x_coord($tail), find_y_coord($tail));
+  # calculate a vector perpendicular to line from $foot to $tail
+  my $diff_x = find_x_coord($head) - find_x_coord($tail);
+  my $diff_y = find_y_coord($head) - find_y_coord($tail);
+  my $length_vect = sqrt($diff_x * $diff_x + $diff_y * $diff_y);
+  my $vect_x = $diff_x / $length_vect;
+  my $vect_y = $diff_y / $length_vect;
+  my $no_iterations=(5 > int($length_vect*7)) ? 5 : int($length_vect*7);
+  foreach my $this_iteration (1..$no_iterations)
+    {
+      # centre row
+      draw_diamond(find_x_coord($tail)+($this_iteration*2-1)*$vect_x*$length_vect/($no_iterations*2+1),
+                   find_y_coord($tail)+($this_iteration*2-1)*$vect_y*$length_vect/($no_iterations*2+1),
+                   $vect_x, $vect_y, $length_vect/($no_iterations*2+1));
+      # top row, last one with an eye
+      draw_diamond(find_x_coord($tail)+($this_iteration*2)*$vect_x*$length_vect/($no_iterations*2+1)
+                   +$vect_y*$length_vect/($no_iterations*2+1),
+                   find_y_coord($tail)+($this_iteration*2)*$vect_y*$length_vect/($no_iterations*2+1)
+                   -$vect_x*$length_vect/($no_iterations*2+1),
+                   $vect_x, $vect_y, $length_vect/($no_iterations*2+1));
+      # bottom row
+      draw_diamond(find_x_coord($tail)+($this_iteration*2)*$vect_x*$length_vect/($no_iterations*2+1)
+                   -$vect_y*$length_vect/($no_iterations*2+1),
+                   find_y_coord($tail)+($this_iteration*2)*$vect_y*$length_vect/($no_iterations*2+1)
+                   +$vect_x*$length_vect/($no_iterations*2+1),
+                   $vect_x, $vect_y, $length_vect/($no_iterations*2+1));
+    }
+  # draw the eye
+  engrave_circle(find_x_coord($tail)+($no_iterations*2)*$vect_x*$length_vect/($no_iterations*2+1)
+                 +$vect_y*$length_vect/($no_iterations*2+1),
+                 find_y_coord($tail)+($no_iterations*2)*$vect_y*$length_vect/($no_iterations*2+1)
+                 -$vect_x*$length_vect/($no_iterations*2+1),
+                 $length_vect/($no_iterations*2+1)/3);
 }
 
 sub draw_rung
@@ -116,6 +165,7 @@ foreach my $this_number (1..100)
   }
 
 # Add the Snakes
+add_snake(36, 25); # test snake
 add_snake(98, 78);
 add_snake(95, 75);
 add_snake(93, 73);
