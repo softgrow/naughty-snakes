@@ -36,52 +36,63 @@ sub engrave_circle
 
 sub draw_diamond
 {
-  my ($x_centre, $y_centre, $vect_x, $vect_y, $scaling) = @_;
-  engrave_line($x_centre-$vect_x*$scaling, $y_centre-$vect_y*$scaling,
+  my ($x_centre, $y_centre, $vect_x, $vect_y, $scaling, $delete_feature) = @_;
+  if ($delete_feature ne 'top')
+    {
+      engrave_line($x_centre-$vect_x*$scaling, $y_centre-$vect_y*$scaling,
                $x_centre-$vect_y*$scaling, $y_centre+$vect_x*$scaling);
-  engrave_line($x_centre-$vect_y*$scaling, $y_centre+$vect_x*$scaling,
+      engrave_line($x_centre-$vect_y*$scaling, $y_centre+$vect_x*$scaling,
                $x_centre+$vect_x*$scaling, $y_centre+$vect_y*$scaling);
-  engrave_line($x_centre+$vect_x*$scaling, $y_centre+$vect_y*$scaling,
-               $x_centre+$vect_y*$scaling, $y_centre-$vect_x*$scaling);
-  engrave_line($x_centre+$vect_y*$scaling, $y_centre-$vect_x*$scaling,
-               $x_centre-$vect_x*$scaling, $y_centre-$vect_y*$scaling);
+    }
+  if ($delete_feature ne 'bottom')
+    {
+      engrave_line($x_centre+$vect_x*$scaling, $y_centre+$vect_y*$scaling,
+                  $x_centre+$vect_y*$scaling, $y_centre-$vect_x*$scaling);
+      engrave_line($x_centre+$vect_y*$scaling, $y_centre-$vect_x*$scaling,
+                   $x_centre-$vect_x*$scaling, $y_centre-$vect_y*$scaling);
+    }
 }
 
 sub add_snake
 {
   my ($head, $tail) = @_;
+
+  my $head_offset = 0.25; # move the head down a little bit to avoid the
+  my $thin_factor = 10; # incrase this to make snakes thinner
+  # numbers
   # calculate a vector perpendicular to line from $foot to $tail
   my $diff_x = find_x_coord($head) - find_x_coord($tail);
-  my $diff_y = find_y_coord($head) - find_y_coord($tail);
+  my $diff_y = find_y_coord($head) - find_y_coord($tail) + $head_offset;
   my $length_vect = sqrt($diff_x * $diff_x + $diff_y * $diff_y);
   my $vect_x = $diff_x / $length_vect;
   my $vect_y = $diff_y / $length_vect;
-  my $no_iterations=(5 > int($length_vect*7)) ? 5 : int($length_vect*7);
+  my $no_iterations=(5 > int($length_vect*$thin_factor)) ? 5
+                    : int($length_vect*$thin_factor);
   foreach my $this_iteration (1..$no_iterations)
     {
       # centre row
       draw_diamond(find_x_coord($tail)+($this_iteration*2-1)*$vect_x*$length_vect/($no_iterations*2+1),
                    find_y_coord($tail)+($this_iteration*2-1)*$vect_y*$length_vect/($no_iterations*2+1),
-                   $vect_x, $vect_y, $length_vect/($no_iterations*2+1));
+                   $vect_x, $vect_y, $length_vect/($no_iterations*2+1),'');
       # top row, last one with an eye
       draw_diamond(find_x_coord($tail)+($this_iteration*2)*$vect_x*$length_vect/($no_iterations*2+1)
                    +$vect_y*$length_vect/($no_iterations*2+1),
                    find_y_coord($tail)+($this_iteration*2)*$vect_y*$length_vect/($no_iterations*2+1)
                    -$vect_x*$length_vect/($no_iterations*2+1),
-                   $vect_x, $vect_y, $length_vect/($no_iterations*2+1));
+                   $vect_x, $vect_y, $length_vect/($no_iterations*2+1), 'top');
       # bottom row
       draw_diamond(find_x_coord($tail)+($this_iteration*2)*$vect_x*$length_vect/($no_iterations*2+1)
                    -$vect_y*$length_vect/($no_iterations*2+1),
                    find_y_coord($tail)+($this_iteration*2)*$vect_y*$length_vect/($no_iterations*2+1)
                    +$vect_x*$length_vect/($no_iterations*2+1),
-                   $vect_x, $vect_y, $length_vect/($no_iterations*2+1));
+                   $vect_x, $vect_y, $length_vect/($no_iterations*2+1),'bottom');
     }
   # draw the eye
-  engrave_circle(find_x_coord($tail)+($no_iterations*2)*$vect_x*$length_vect/($no_iterations*2+1)
-                 +$vect_y*$length_vect/($no_iterations*2+1),
-                 find_y_coord($tail)+($no_iterations*2)*$vect_y*$length_vect/($no_iterations*2+1)
-                 -$vect_x*$length_vect/($no_iterations*2+1),
-                 $length_vect/($no_iterations*2+1)/3);
+  # engrave_circle(find_x_coord($tail)+($no_iterations*2)*$vect_x*$length_vect/($no_iterations*2+1)
+  #               +$vect_y*$length_vect/($no_iterations*2+1),
+  #               find_y_coord($tail)+($no_iterations*2)*$vect_y*$length_vect/($no_iterations*2+1)
+  #               -$vect_x*$length_vect/($no_iterations*2+1),
+  #               $length_vect/($no_iterations*2+1)/3);
 }
 
 sub draw_rung
@@ -118,6 +129,20 @@ sub add_ladder
     }
 }
 
+# make a circular token with a letter inside
+sub make_token
+{
+  use feature 'state';
+  my ($letter)=@_;
+  state $y_pos=0.5;
+  # print the outside circle
+  print "<circle class=\"cut\" cx=\"10.5\" cy=\"$y_pos\" r=\"0.45\" />\n";
+  # engrave the letter
+  print "<text class=\"label\" x=\"10.5\" y=\"".$y_pos."\">"
+          .$letter."</text>\n";
+  $y_pos+=1.0;
+}
+
 # Output SVG Header
 print << 'THE_END';
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -127,9 +152,9 @@ print << 'THE_END';
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
-   viewBox = "-0.1 -0.1 10.1 10.1"
+   viewBox = "-0.1 -0.1 11.22 10.1"
    version = "1.1"
-   width = "360mm"
+   width = "400mm"
    height = "360mm"
   >
   <style type="text/css"><![CDATA[
@@ -165,7 +190,6 @@ foreach my $this_number (1..100)
   }
 
 # Add the Snakes
-add_snake(36, 25); # test snake
 add_snake(98, 78);
 add_snake(95, 75);
 add_snake(93, 73);
@@ -187,6 +211,15 @@ add_ladder(36, 44);
 add_ladder(51, 67);
 add_ladder(71, 91);
 add_ladder(80, 100);
+
+# print some tokens
+make_token('a');
+make_token('b');
+make_token('c');
+make_token('d');
+make_token('e');
+make_token('f');
+
 # Output the SVG Tail
 print << 'THE_END';
 </svg>
